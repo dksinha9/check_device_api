@@ -1,8 +1,6 @@
 from flask import Flask, request, jsonify
-import os
-import platform
-import datetime
 import socket
+import datetime
 
 app = Flask(__name__)
 
@@ -14,22 +12,27 @@ def index():
 def check_device():
     data = request.json
     ip = data.get('ip')
+    port = data.get('port', 80)  # default to port 80 (HTTP)
+
     if not ip:
         return jsonify({"error": "IP is required"}), 400
 
     try:
-        param = "-n" if platform.system().lower() == "windows" else "-c"
-        response = os.system(f"ping {param} 1 {ip}")
-        status = "online" if response == 0 else "offline"
-        hostname = socket.getfqdn(ip)
-    except Exception as e:
-        status = "error"
-        hostname = str(e)
+        socket.setdefaulttimeout(3)  # timeout in seconds
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect((ip, port))
+        s.close()
+        status = "online"
+    except Exception:
+        status = "offline"
+
+    hostname = socket.getfqdn(ip)
 
     return jsonify({
         "status": status,
         "ip": ip,
         "hostname": hostname,
+        "port": port,
         "timestamp": datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     })
 
