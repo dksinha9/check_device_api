@@ -1,8 +1,10 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS  # ✅ Add this
 import socket
 import datetime
 
 app = Flask(__name__)
+CORS(app)  # ✅ This enables CORS for all routes
 
 @app.route('/')
 def index():
@@ -12,13 +14,13 @@ def index():
 def check_device():
     data = request.json
     ip = data.get('ip')
-    port = data.get('port', 80)  # default to port 80 (HTTP)
+    port = data.get('port', 80)
 
     if not ip:
         return jsonify({"error": "IP is required"}), 400
 
     try:
-        socket.setdefaulttimeout(3)  # timeout in seconds
+        socket.setdefaulttimeout(3)
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((ip, port))
         s.close()
