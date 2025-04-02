@@ -63,5 +63,104 @@ def get_router_info():
     except Exception as e:
         return jsonify({"error": "Failed to fetch router info", "details": str(e)}), 500
 
+
+def find_user_id(ip, username, password, user_name):
+    """Helper function to find a user by name and return their .id"""
+    query_url = f"https://{ip}/rest/user-manager/user/print"
+    query_payload = {
+        ".query": [f"=name={user_name}"]
+    }
+
+    try:
+        response = requests.post(
+            query_url,
+            auth=HTTPBasicAuth(username, password),
+            json=query_payload,
+            verify=False  # Allow self-signed cert
+        )
+
+        users = response.json()
+
+        # Loop through and find exact name match
+        for user in users:
+            if user.get("name") == user_name:
+                return user.get(".id")
+        return None
+
+    except Exception as e:
+        print("Error finding user:", e)
+        return None
+
+
+@app.route("/api/enable-internet", methods=["POST"])
+def enable_internet():
+    data = request.json
+    ip = data.get("ip")
+    username = data.get("username")
+    password = data.get("password")
+    user_name = data.get("user_name")
+
+    if not all([ip, username, password, user_name]):
+        return jsonify({"error": "Missing required fields"}), 400
+
+    user_id = find_user_id(ip, username, password, user_name)
+    if not user_id:
+        return jsonify({"error": "User not found"}), 404
+
+    try:
+        enable_url = f"https://{ip}/rest/user-manager/user/enable"
+        payload = {".id": user_id}
+
+        response = requests.post(
+            enable_url,
+            auth=HTTPBasicAuth(username, password),
+            json=payload,
+            verify=False
+        )
+
+        return jsonify({
+            "status": "enabled",
+            "user_id": user_id
+        })
+
+    except Exception as e:
+        return jsonify({"error": "Enable failed", "details": str(e)}), 500
+
+
+@app.route("/api/disable-internet", methods=["POST"])
+def disable_internet():
+    data = request.json
+    ip = data.get("ip")
+    username = data.get("username")
+    password = data.get("password")
+    user_name = data.get("user_name")
+
+    if not all([ip, username, password, user_name]):
+        return jsonify({"error": "Missing required fields"}), 400
+
+    user_id = find_user_id(ip, username, password, user_name)
+    if not user_id:
+        return jsonify({"error": "User not found"}), 404
+
+    try:
+        disable_url = f"https://{ip}/rest/user-manager/user/disable"
+        payload = {".id": user_id}
+
+        response = requests.post(
+            disable_url,
+            auth=HTTPBasicAuth(username, password),
+            json=payload,
+            verify=False
+        )
+
+        return jsonify({
+            "status": "disabled",
+            "user_id": user_id
+        })
+
+    except Exception as e:
+        return jsonify({"error": "Disable failed", "details": str(e)}), 500
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
