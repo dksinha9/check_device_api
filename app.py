@@ -2,6 +2,8 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS  # ✅ Add this
 import socket
 import datetime
+from requests.auth import HTTPBasicAuth
+import requests
 
 app = Flask(__name__)
 CORS(app)  # ✅ This enables CORS for all routes
@@ -37,6 +39,29 @@ def check_device():
         "port": port,
         "timestamp": datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     })
+
+@app.route('/api/router-info', methods=['POST'])
+def get_router_info():
+    data = request.json
+    ip = data.get('ip')
+    username = data.get('username')
+    password = data.get('password')
+
+    if not ip or not username:
+        return jsonify({"error": "IP and username are required"}), 400
+
+    url = f"https://{ip}/rest/system/resource"
+
+    try:
+        response = requests.get(
+            url,
+            auth=HTTPBasicAuth(username, password),
+            verify=False  # Accept self-signed certs (for MikroTik)
+        )
+        return jsonify(response.json())
+
+    except Exception as e:
+        return jsonify({"error": "Failed to fetch router info", "details": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
